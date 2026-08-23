@@ -72,6 +72,7 @@
 {"description":"Data rendering","key": "highway","value": "trunk","object_types": ["way"]},
 {"description":"Data rendering","key": "highway","value": "trunk_link","object_types": ["way"]},
 {"description":"Data rendering","key": "highway","value": "unclassified","object_types": ["way"]},
+{"description":"Data rendering","key": "highway","value": "via_ferrata","object_types": ["way"]},
 {"description":"Data rendering","key": "historic","object_types": ["way"]},
 {"description":"Data rendering","key": "indoor","object_types": ["way"]},
 {"description":"Data rendering","key": "indoor","value": "corridor","object_types": ["way"]},
