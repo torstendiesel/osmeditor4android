@@ -126,6 +126,7 @@ public class WikimediaCommonsUploadTest {
      */
     @After
     public void teardown() {
+        prefDB.deleteImageStore(WM_TEST);
         TestUtils.stopEasyEdit(main);
         TestUtils.zoomToNullIsland(logic, map);
         mainScenario.moveToState(State.DESTROYED);
@@ -159,7 +160,7 @@ public class WikimediaCommonsUploadTest {
         assertTrue(TestUtils.clickOverflowButton(device));
         TestUtils.scrollTo(main.getString(R.string.menu_add_existing_image), false);
         assertTrue(TestUtils.clickText(device, false, main.getString(R.string.menu_add_existing_image), true, false));
-        TestUtils.selectFile(device, context, "Pictures", PHOTO_FILE3, false);
+        TestUtils.selectFile(device, context, "", "Pictures", PHOTO_FILE3, false);
 
         assertTrue(TestUtils.findText(device, false, main.getString(R.string.image_upload_title)));
         assertTrue(TestUtils.clickText(device, false, main.getString(R.string.image_upload), true));

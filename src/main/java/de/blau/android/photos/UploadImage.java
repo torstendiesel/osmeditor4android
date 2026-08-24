@@ -203,6 +203,9 @@ public class UploadImage {
                         ScreenMessage.toastTopError(context,
                                 context.getString(R.string.image_upload_failed_due_to, httpCode, (message != null ? message : ""), url));
                         return;
+                    case ErrorCodes.REQUIRED_FEATURE_MISSING:
+                        ScreenMessage.toastTopError(context, result.getMessage());
+                        return;
                     default:
                         // fall through
                     }
