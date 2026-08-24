@@ -69,7 +69,7 @@ class PhotoUriHandler implements PostAsyncActionHandler {
             App.getLogic().setZoom(map, Ui.ZOOM_FOR_ZOOMTO);
             map.getViewBox().moveTo(map, photo.getLon(), photo.getLat());
             map.invalidate();
-        } catch (NumberFormatException | IOException e) {
+        } catch (IllegalArgumentException | IOException e) {
             Log.e(DEBUG_TAG, e.getMessage());
             ScreenMessage.toastTopError(main, main.getString(R.string.toast_error_accessing_photo, uri));
         }

@@ -74,25 +74,25 @@ public final class TestUtils {
     private TestUtils() {
         // empty
     }
-    
+
     /**
      * Turn off wifi and mobile connections
      * 
      * @param device the UiDevice
-     * @throws IOException 
+     * @throws IOException
      */
-    public static void turnOffNetwork(@NonNull UiDevice device ) throws IOException {
+    public static void turnOffNetwork(@NonNull UiDevice device) throws IOException {
         device.executeShellCommand("svc wifi disable");
         device.executeShellCommand("svc data disable");
     }
-    
+
     /**
      * Turn off wifi and mobile connections
      * 
      * @param device the UiDevice
-     * @throws IOException 
+     * @throws IOException
      */
-    public static void turnOnNetwork(@NonNull UiDevice device ) throws IOException {
+    public static void turnOnNetwork(@NonNull UiDevice device) throws IOException {
         device.executeShellCommand("svc wifi enable");
         device.executeShellCommand("svc data enable");
     }
@@ -103,7 +103,7 @@ public final class TestUtils {
      * @param device the UiDevice
      */
     public static void grantPermissons(@NonNull UiDevice device) {
-        // there's no good place to do this, but if we are not starting with Splash we want to get this 
+        // there's no good place to do this, but if we are not starting with Splash we want to get this
         // asap.
         new ExecutorTask<Void, Void, Void>() {
 
@@ -112,7 +112,7 @@ public final class TestUtils {
                 App.getHttpClient();
                 return null;
             }
-            
+
         }.execute();
         clickText(device, false, "Wait", true, false, 5000);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -1243,6 +1243,21 @@ public final class TestUtils {
      */
     public static void selectFile(@NonNull UiDevice device, @NonNull Context context, @Nullable String directory, @NonNull String fileName,
             boolean useVespucciDir, boolean create) {
+        selectFile(device, context, useVespucciDir ? "Download/Vespucci" : "Android/data/" + context.getPackageName() + "/files", directory, fileName, create);
+    }
+
+    /**
+     * Select a file from the file picker
+     * 
+     * @param device the current UiDevice
+     * @param context Android Context
+     * @param storagePath where we start off
+     * @param directory optional sub-directory
+     * @param fileName the name of the file
+     * @param create if true create a new file with the name
+     */
+    public static void selectFile(@NonNull UiDevice device, @NonNull Context context, @Nullable String storagePath, @Nullable String directory,
+            @NonNull String fileName, boolean create) {
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q && findText(device, false, context.getString(R.string.select_file_picker_title))) {
             // we should see the file picker selector here
             assertTrue(clickText(device, false, "Files", true));
@@ -1293,10 +1308,7 @@ public final class TestUtils {
                 Assert.fail("Link to internal storage not found in drawer");
             }
         }
-        String storagePath = "Android/data/" + context.getPackageName() + "/files";
-        if (useVespucciDir) {
-            storagePath = "Download/Vespucci"; // FIXME use FileUtil...
-        }
+
         selectDirectory(device, storagePath, scrollableSelector);
 
         if (directory != null) {
