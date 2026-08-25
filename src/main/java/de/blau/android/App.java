@@ -1,6 +1,7 @@
 package de.blau.android;
 
 import static de.blau.android.contract.Constants.LOG_TAG_LEN;
+import static de.blau.android.contract.Urls.ACRARIUM_URL;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -16,7 +17,12 @@ import org.acra.ACRA;
 import org.acra.annotation.AcraCore;
 import org.acra.annotation.AcraDialog;
 import org.acra.annotation.AcraHttpSender;
+import org.acra.config.CoreConfiguration;
+import org.acra.config.CoreConfigurationBuilder;
+import org.acra.config.HttpSenderConfigurationBuilder;
 import org.acra.sender.HttpSender;
+import org.acra.sender.ReportSender;
+import org.acra.sender.ReportSenderFactory;
 import org.conscrypt.Conscrypt;
 import org.mozilla.javascript.ImporterTopLevel;
 import org.mozilla.javascript.ScriptableObject;
@@ -77,7 +83,7 @@ import okhttp3.OkHttpClient;
 
 @AcraCore(resReportSendSuccessToast = R.string.report_success, resReportSendFailureToast = R.string.report_failure, logcatArguments = { "-t", "500", "-v",
         "time" })
-@AcraHttpSender(httpMethod = HttpSender.Method.POST, uri = "https://acrarium.vespucci.io/", resCertificate = R.raw.isrg_root_x1)
+@AcraHttpSender(httpMethod = HttpSender.Method.POST, uri = ACRARIUM_URL, resCertificate = R.raw.isrg_root_x1)
 @AcraDialog(resText = R.string.crash_dialog_text, resCommentPrompt = R.string.crash_dialog_comment_prompt, resTheme = R.style.Theme_AppCompat_Light_Dialog)
 
 public class App extends Application implements android.app.Application.ActivityLifecycleCallbacks {
@@ -219,6 +225,19 @@ public class App extends Application implements android.app.Application.Activity
 
     private static FSTConfiguration singletonConf;
 
+    public static class CustomSenderFactory implements ReportSenderFactory {
+        @NonNull
+        @Override
+        public ReportSender create(@NonNull Context context, @NonNull CoreConfiguration config) {
+            return new CustomSender(config);
+        }
+
+        @Override
+        public boolean enabled(@NonNull CoreConfiguration config) {
+            return true;
+        }
+    }
+
     /**
      * Get the name of the app this is used besides for the name as the directory where we store public configuration
      * and files
@@ -246,7 +265,14 @@ public class App extends Application implements android.app.Application.Activity
 
     @Override
     public void onCreate() {
-        ACRA.init(this);
+
+        CoreConfigurationBuilder builder = new CoreConfigurationBuilder(this).setReportFormat(org.acra.data.StringFormat.JSON);
+        builder.getPluginConfigurationBuilder(HttpSenderConfigurationBuilder.class).setUri(ACRARIUM_URL).setEnabled(true);
+        builder.setReportSenderFactoryClasses(CustomSenderFactory.class);
+
+        // Initialize ACRA with the custom configuration
+        ACRA.init(this, builder);
+
         super.onCreate();
         registerActivityLifecycleCallbacks(this);
         setupMisc(this);
@@ -754,29 +780,38 @@ public class App extends Application implements android.app.Application.Activity
     /**
      * Return a sandboxed rhino scope for scripting
      * 
-     * Allows access to the java package but not to the app internals FIXME not clear if we can use the same scope the
-     * whole time
+     * Allows access to the java package but not to the app internals
      * 
      * @param ctx android context
      * @return rhino scope
      */
     public static org.mozilla.javascript.Scriptable getRestrictedRhinoScope(@NonNull Context ctx) {
         synchronized (rhinoLock) {
-            if (rhinoScope == null) {
-                org.mozilla.javascript.Context c = Utils.getRhinoContext(ctx);
-                try {
-                    // this is a fairly hackish way of sandboxing, but it does work
-                    rhinoScope = new ImporterTopLevel(c);
-                    c.evaluateString(rhinoScope, "java", RHINO_LAZY_LOAD, 0, null);
-                    // note any classes loaded here need to be kept in the ProGuard configuration
-                    c.evaluateString(rhinoScope, "importClass(com.mapbox.turf.TurfMeasurement)", RHINO_LAZY_LOAD, 0, null);
-                    c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.osm.BoundingBox)", RHINO_LAZY_LOAD, 0, null);
-                    c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.GeoMath)", RHINO_LAZY_LOAD, 0, null);
-                    c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.collections.LongPrimitiveList)", RHINO_LAZY_LOAD, 0, null);
-                    ((ScriptableObject) rhinoScope).sealObject();
-                } finally {
-                    org.mozilla.javascript.Context.exit();
-                }
+            if (rhinoScope != null) {
+                return rhinoScope;
+            }
+            org.mozilla.javascript.Context c = Utils.getRhinoContext(ctx);
+            try {
+                // this is a fairly hackish way of sandboxing, but it does work
+                rhinoScope = new ImporterTopLevel(c);
+                c.evaluateString(rhinoScope, "java", RHINO_LAZY_LOAD, 0, null);
+                // note any classes loaded here need to be kept in the ProGuard configuration
+                c.evaluateString(rhinoScope, "importClass(com.mapbox.turf.TurfMeasurement)", RHINO_LAZY_LOAD, 0, null);
+                c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.osm.BoundingBox)", RHINO_LAZY_LOAD, 0, null);
+                c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.GeoMath)", RHINO_LAZY_LOAD, 0, null);
+                c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.collections.LongPrimitiveList)", RHINO_LAZY_LOAD, 0, null);
+
+                int sandboxAttributes = ScriptableObject.DONTENUM | ScriptableObject.PERMANENT | ScriptableObject.READONLY;
+                final Object undefinedValue = org.mozilla.javascript.Context.getUndefinedValue();
+                ScriptableObject.defineProperty(rhinoScope, "com", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "org", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "net", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "android", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "Packages", undefinedValue, sandboxAttributes);
+
+                ((ScriptableObject) rhinoScope).sealObject();
+            } finally {
+                org.mozilla.javascript.Context.exit();
             }
             return rhinoScope;
         }

@@ -62,6 +62,7 @@ public class PanoramaxUploadTest {
     private static final String PANORAMAX_TEST = "PANORAMAX-TEST";
 
     private static final String PHOTO_FILE3 = "test3.jpg";
+    private static final String NO_EXIF     = "no-exif.jpg";
 
     Context                 context      = null;
     AdvancedPrefDatabase    prefDB       = null;
@@ -93,14 +94,21 @@ public class PanoramaxUploadTest {
         mockServer = new MockWebServerPlus();
         prefDB = new AdvancedPrefDatabase(context);
         prefDB.addImageStore(PANORAMAX_TEST, PANORAMAX_TEST, ImageStorageType.PANORAMAX, mockServer.url("/"), true);
+        
         File photo3 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath(), PHOTO_FILE3);
         try {
             JavaResources.copyFileFromResources(PHOTO_FILE3, null, photo3);
         } catch (IOException e) {
             fail(e.getMessage());
         }
+        File noExif = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath(), NO_EXIF);
+        try {
+            JavaResources.copyFileFromResources(NO_EXIF, null, noExif);
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
         final CountDownLatch signal = new CountDownLatch(1);
-        MediaScannerConnection.scanFile(context, new String[] { photo3.getAbsolutePath() }, new String[] { MimeTypes.JPEG },
+        MediaScannerConnection.scanFile(context, new String[] { photo3.getAbsolutePath(), noExif.getAbsolutePath() }, new String[] { MimeTypes.JPEG },
                 (String path, Uri uri) -> signal.countDown());
         SignalUtils.signalAwait(signal, 10);
         try (KeyDatabaseHelper kdb = new KeyDatabaseHelper(main); SQLiteDatabase db = kdb.getWritableDatabase()) {
@@ -142,6 +150,7 @@ public class PanoramaxUploadTest {
      */
     @After
     public void teardown() {
+        prefDB.deleteImageStore(PANORAMAX_TEST);
         TestUtils.stopEasyEdit(main);
         TestUtils.zoomToNullIsland(logic, map);
         mainScenario.moveToState(State.DESTROYED);
@@ -189,7 +198,7 @@ public class PanoramaxUploadTest {
         }
         assertEquals("74451e31-119b-4b22-a6cb-23e97947331d", node.getTagWithKey(Tags.KEY_PANORAMAX));
     }
-    
+
     /**
      * Upload existing and add to element
      */
@@ -214,7 +223,7 @@ public class PanoramaxUploadTest {
         assertTrue(TestUtils.clickOverflowButton(device));
         TestUtils.scrollTo(main.getString(R.string.menu_add_existing_image), false);
         assertTrue(TestUtils.clickText(device, false, main.getString(R.string.menu_add_existing_image), true, false));
-        TestUtils.selectFile(device, context, "Pictures", PHOTO_FILE3, false);
+        TestUtils.selectFile(device, context, "", "Pictures", PHOTO_FILE3, false);
 
         assertTrue(TestUtils.findText(device, false, main.getString(R.string.image_upload_title)));
         assertTrue(TestUtils.clickText(device, false, main.getString(R.string.image_upload), true));
@@ -241,11 +250,11 @@ public class PanoramaxUploadTest {
 
         assertEquals(1, App.getPhotoIndex().count());
         TestUtils.clickAtCoordinates(device, main.getMap(), 8.3074998, 47.4694442, true);
-        
+
         TestUtils.sleep(10000);
 
         TestUtils.clickMenuButton(device, main.getString(R.string.abc_action_menu_overflow_description), false, true, 10000);
-        
+
         TestUtils.sleep(5000); // seems to be needed
 
         assertTrue(TestUtils.clickText(device, false, main.getString(R.string.photo_viewer_upload), false));
@@ -260,5 +269,32 @@ public class PanoramaxUploadTest {
             fail(e.getMessage());
         }
         device.pressBack();
+    }
+
+    /**
+     * Upload existing without EXIF
+     */
+    @Test
+    public void uploadExistingWithoutEXIF() {
+        TestUtils.clickAwayTip(device, context);
+
+        Node node = (Node) App.getDelegator().getOsmElement(Node.NAME, 3465444349L);
+        assertNotNull(node);
+        TestUtils.clickAtCoordinates(device, map, node.getLon(), node.getLat(), true);
+        TestUtils.sleep();
+        TestUtils.clickAwayTip(device, context);
+        assertTrue(TestUtils.clickTextContains(device, "Toilets", true, 5000));
+        node = App.getLogic().getSelectedNode();
+        assertNotNull(node);
+        assertEquals(3465444349L, node.getOsmId());
+        assertTrue(TestUtils.findText(device, false, context.getString(R.string.actionmode_nodeselect)));
+        assertTrue(TestUtils.clickOverflowButton(device));
+        TestUtils.scrollTo(main.getString(R.string.menu_add_existing_image), false);
+        assertTrue(TestUtils.clickText(device, false, main.getString(R.string.menu_add_existing_image), true, false));
+        TestUtils.selectFile(device, context, "", "Pictures", NO_EXIF, false);
+        
+        assertTrue(TestUtils.findText(device, false, main.getString(R.string.image_upload_title)));
+        assertTrue(TestUtils.clickText(device, false, main.getString(R.string.image_upload), true));
+        assertTrue(TestUtils.findNotification(device, main.getString(R.string.toast_photo_missing_exif_geolocation)));
     }
 }

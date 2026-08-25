@@ -94,6 +94,17 @@ public class Photo implements BoundedObject, GeoPoint, Serializable {
      * @throws NumberFormatException If there was a problem parsing the XML.
      */
     public Photo(@NonNull File directory, @NonNull File imageFile) throws IOException, NumberFormatException {
+        this(imageFile);
+    }
+
+    /**
+     * Construct a Photo object from a directory and filename of the image
+     * @param imageFile the image file
+     * 
+     * @throws IOException If there was a problem parsing the XML.
+     * @throws NumberFormatException If there was a problem parsing the XML.
+     */
+    public Photo(@NonNull File imageFile) throws IOException, NumberFormatException {
         this(new ExifInterface(imageFile.toString()), imageFile.getAbsolutePath(), imageFile.getName());
     }
 
@@ -105,7 +116,7 @@ public class Photo implements BoundedObject, GeoPoint, Serializable {
      * @param displayName a name of the image for display purposes
      * @throws IOException if location information is missing
      */
-    private Photo(@NonNull ExifInterface exif, @NonNull String ref, @Nullable String displayName) throws IOException {
+    private Photo(@NonNull ExifInterface exif, @NonNull String ref, @Nullable String displayName) {
         this.ref = ref;
         this.displayName = displayName;
         /**
@@ -113,7 +124,7 @@ public class Photo implements BoundedObject, GeoPoint, Serializable {
          **/
         String lonStr = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE);
         if (lonStr == null) {
-            throw new IOException("No EXIF longitude tag");
+            throw new IllegalArgumentException("No EXIF longitude tag");
         }
         float lonf = convertToDegree(lonStr);
 
@@ -129,7 +140,7 @@ public class Photo implements BoundedObject, GeoPoint, Serializable {
             latf = -latf;
         }
         if (!(Util.notZero(lonf) && Util.notZero(latf))) {
-            throw new IOException("Lat and lon are zero");
+            throw new IllegalArgumentException("Lat and lon are zero");
         }
 
         lat = (int) (latf * 1E7d);

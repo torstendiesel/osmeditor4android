@@ -171,6 +171,14 @@ public class PhotoViewerFragment<T extends Serializable> extends SizedDynamicDia
         return null;
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (photoLoader != null) {
+            photoLoader.clearSelection(getContext());
+        }
+    }
+
     ImageLoader defaultLoader = new ImageLoader() {
         private static final long serialVersionUID = 2L;
 
@@ -227,7 +235,7 @@ public class PhotoViewerFragment<T extends Serializable> extends SizedDynamicDia
                     intent.setData(p.getRefUri(context));
                     getContext().startActivity(intent);
                 }
-            } catch (NumberFormatException | IOException | IndexOutOfBoundsException e) {
+            } catch (IllegalArgumentException | IOException | IndexOutOfBoundsException e) {
                 ScreenMessage.toastTopError(context, context.getString(R.string.toast_error_accessing_photo, Integer.toString(index)));
             }
         }

@@ -36,6 +36,7 @@ import de.blau.android.R;
 import de.blau.android.contract.MimeTypes;
 import de.blau.android.net.OAuth2Interceptor;
 import de.blau.android.osm.Tags;
+import de.blau.android.photos.Photo;
 import de.blau.android.prefs.AdvancedPrefDatabase.ImageStorageType;
 import de.blau.android.prefs.ImageStorageConfiguration;
 import de.blau.android.resources.KeyDatabaseHelper;
@@ -193,6 +194,9 @@ public class PanoramaxStorage implements ImageStorage {
     @Override
     public UploadResult upload(Context context, File imageFile) {
         try {
+            // check if it has coordinates and EXIF
+            new Photo(imageFile);
+
             // check if authorized
             if (!checkAuthorized(context)) {
                 Log.e(DEBUG_TAG, "Not authorized");
@@ -247,6 +251,11 @@ public class PanoramaxStorage implements ImageStorage {
             }
         } catch (Exception e) {
             Log.e(DEBUG_TAG, "upload " + e.getClass().getCanonicalName() + " " + e.getMessage());
+            if (e instanceof IllegalArgumentException) {
+                UploadResult result = new UploadResult(ErrorCodes.REQUIRED_FEATURE_MISSING);
+                result.setMessage(context.getString(R.string.toast_photo_missing_exif_geolocation));
+                return result;
+            }
             UploadResult result = new UploadResult(ErrorCodes.UPLOAD_PROBLEM);
             result.setMessage(e.getMessage());
             return result;

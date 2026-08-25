@@ -465,10 +465,10 @@ public class PhotoIndex extends SQLiteOpenHelper {
     @Nullable
     private Photo addPhoto(@NonNull SQLiteDatabase db, @NonNull File dir, @NonNull File f) {
         try {
-            Photo p = new Photo(dir, f);
+            Photo p = new Photo(f);
             insertPhoto(db, p, f.getName(), null);
             return p;
-        } catch (NumberFormatException | IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             // ignore silently, broken pictures are not our business
         }
         return null;
