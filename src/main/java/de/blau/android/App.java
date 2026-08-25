@@ -780,29 +780,38 @@ public class App extends Application implements android.app.Application.Activity
     /**
      * Return a sandboxed rhino scope for scripting
      * 
-     * Allows access to the java package but not to the app internals FIXME not clear if we can use the same scope the
-     * whole time
+     * Allows access to the java package but not to the app internals
      * 
      * @param ctx android context
      * @return rhino scope
      */
     public static org.mozilla.javascript.Scriptable getRestrictedRhinoScope(@NonNull Context ctx) {
         synchronized (rhinoLock) {
-            if (rhinoScope == null) {
-                org.mozilla.javascript.Context c = Utils.getRhinoContext(ctx);
-                try {
-                    // this is a fairly hackish way of sandboxing, but it does work
-                    rhinoScope = new ImporterTopLevel(c);
-                    c.evaluateString(rhinoScope, "java", RHINO_LAZY_LOAD, 0, null);
-                    // note any classes loaded here need to be kept in the ProGuard configuration
-                    c.evaluateString(rhinoScope, "importClass(com.mapbox.turf.TurfMeasurement)", RHINO_LAZY_LOAD, 0, null);
-                    c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.osm.BoundingBox)", RHINO_LAZY_LOAD, 0, null);
-                    c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.GeoMath)", RHINO_LAZY_LOAD, 0, null);
-                    c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.collections.LongPrimitiveList)", RHINO_LAZY_LOAD, 0, null);
-                    ((ScriptableObject) rhinoScope).sealObject();
-                } finally {
-                    org.mozilla.javascript.Context.exit();
-                }
+            if (rhinoScope != null) {
+                return rhinoScope;
+            }
+            org.mozilla.javascript.Context c = Utils.getRhinoContext(ctx);
+            try {
+                // this is a fairly hackish way of sandboxing, but it does work
+                rhinoScope = new ImporterTopLevel(c);
+                c.evaluateString(rhinoScope, "java", RHINO_LAZY_LOAD, 0, null);
+                // note any classes loaded here need to be kept in the ProGuard configuration
+                c.evaluateString(rhinoScope, "importClass(com.mapbox.turf.TurfMeasurement)", RHINO_LAZY_LOAD, 0, null);
+                c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.osm.BoundingBox)", RHINO_LAZY_LOAD, 0, null);
+                c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.GeoMath)", RHINO_LAZY_LOAD, 0, null);
+                c.evaluateString(rhinoScope, "importClass(Packages.de.blau.android.util.collections.LongPrimitiveList)", RHINO_LAZY_LOAD, 0, null);
+
+                int sandboxAttributes = ScriptableObject.DONTENUM | ScriptableObject.PERMANENT | ScriptableObject.READONLY;
+                final Object undefinedValue = org.mozilla.javascript.Context.getUndefinedValue();
+                ScriptableObject.defineProperty(rhinoScope, "com", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "org", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "net", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "android", undefinedValue, sandboxAttributes);
+                ScriptableObject.defineProperty(rhinoScope, "Packages", undefinedValue, sandboxAttributes);
+
+                ((ScriptableObject) rhinoScope).sealObject();
+            } finally {
+                org.mozilla.javascript.Context.exit();
             }
             return rhinoScope;
         }

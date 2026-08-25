@@ -14,7 +14,10 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mozilla.javascript.EcmaError;
 import org.mozilla.javascript.EvaluatorException;
+
+import com.mapbox.geojson.BoundingBox;
 
 import android.app.Instrumentation;
 import android.content.Context;
@@ -71,7 +74,7 @@ public class ScriptingTest {
         try {
             Utils.evalString(context, "sandbox3", importStatement);
             fail(importError);
-        } catch (EvaluatorException ex) {
+        } catch (EcmaError ex) {
             // carry on
         }
         // scope for presets
@@ -86,7 +89,7 @@ public class ScriptingTest {
         try {
             Utils.evalString(context, "sandbox4", importStatement, logic);
             fail(importError);
-        } catch (EvaluatorException ex) {
+        } catch (EcmaError ex) {
             // carry on
         }
         // scope for general scripting
@@ -94,12 +97,12 @@ public class ScriptingTest {
         assertEquals("(0,0,0,0)", r);
         r = Utils.evalString(context, "sandbox6", "b = GeoMath.createBoundingBoxForCoordinates(0,0,10);", logic);
         assertEquals("(-899,-899,899,899)", r);
-        r = Utils.evalString(context, "sandbox7", "logic.getModifiedNodes().size() + logic.getNodes().size()", logic);
+        r = Utils.evalString(context, "sandbox7", "logic.getModifiedNodes(new BoundingBox(-180.0,-90.0,180.0,90.0)).size() + logic.getNodes().size()", logic);
         assertEquals("0", r);
         try {
             Utils.evalString(context, "sandbox8", importStatement, logic);
             fail(importError);
-        } catch (EvaluatorException ex) {
+        } catch (EcmaError ex) {
             // carry on
         }
     }

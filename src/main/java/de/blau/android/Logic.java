@@ -5575,6 +5575,15 @@ public class Logic {
     }
 
     /**
+     * Get a list of all nodes currently in storage
+     * 
+     * @return unmodifiable list of all nodes currently loaded
+     */
+    public List<Node> getNodes() {
+        return getDelegator().getCurrentStorage().getNodes();
+    }
+
+    /**
      * Get a list of all ways currently in storage
      * 
      * @return unmodifiable list of all ways currently loaded
